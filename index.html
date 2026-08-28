@@ -188,6 +188,22 @@
   .cal-legend{display:flex; align-items:center; gap:8px; margin-top:16px; font-size:11px; color:var(--gray);}
   .cal-legend .sw{width:12px; height:12px; border-radius:3px;}
 
+  .year-stats{display:flex; gap:22px; margin-bottom:14px; flex-wrap:wrap;}
+  .year-stats .stat{display:flex; flex-direction:column;}
+  .year-stats .stat b{font-family:'JetBrains Mono',monospace; font-size:20px; color:var(--violet-800);}
+  .year-stats .stat span{font-size:11px; color:var(--gray);}
+  .year-wrap{overflow-x:auto; padding-bottom:6px;}
+  .year-labels{display:inline-grid; grid-auto-flow:column; grid-auto-columns:13px; gap:3px; margin-bottom:5px; margin-left:18px;}
+  .year-label{font-size:10px; color:var(--gray); width:0; overflow:visible; white-space:nowrap;}
+  .year-grid-outer{display:flex; align-items:flex-start; gap:6px;}
+  .year-weekday-labels{display:grid; grid-template-rows:repeat(7,13px); gap:3px; margin-top:0;}
+  .year-weekday-labels div{font-size:9px; color:var(--gray); line-height:13px;}
+  .year-grid{display:inline-grid; grid-auto-flow:column; grid-auto-columns:13px; grid-template-rows:repeat(7,13px); gap:3px;}
+  .year-cell{width:13px; height:13px; border-radius:3px; background:var(--paper-2); border:1px solid var(--line); cursor:pointer;}
+  .year-cell.empty{border:none; background:transparent; cursor:default;}
+  .year-cell.today{border-color:var(--violet-600); border-width:2px;}
+  .year-cell.selected{border-color:var(--ink); border-width:2px;}
+
   .resource-card .res-add{display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-bottom:14px;}
   .res-list{display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto;}
   .res-item{
@@ -308,15 +324,39 @@
     <div class="card cal-card">
       <div class="cal-head">
         <h2>行事曆</h2>
-        <div class="cal-nav">
+        <div class="cal-nav" id="monthNav">
           <button class="btn-icon" id="prevMonth" aria-label="上個月">‹</button>
           <span class="month-label" id="monthLabel">—</span>
           <button class="btn-icon" id="nextMonth" aria-label="下個月">›</button>
           <button class="btn-ghost" id="todayBtn" style="margin-left:6px;">今天</button>
         </div>
+        <div class="cal-nav" id="yearNav" style="display:none;">
+          <button class="btn-icon" id="prevYear" aria-label="上一年">‹</button>
+          <span class="month-label" id="yearLabel">—</span>
+          <button class="btn-icon" id="nextYear" aria-label="下一年">›</button>
+          <button class="btn-ghost" id="thisYearBtn" style="margin-left:6px;">今年</button>
+        </div>
       </div>
-      <div class="weekdays"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
-      <div class="cal-grid" id="calGrid"></div>
+      <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+        <button class="btn-ghost" id="viewToggleBtn">切換成年檢視</button>
+      </div>
+
+      <div id="monthView">
+        <div class="weekdays"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
+        <div class="cal-grid" id="calGrid"></div>
+      </div>
+
+      <div id="yearView" style="display:none;">
+        <div class="year-stats" id="yearStats"></div>
+        <div class="year-wrap">
+          <div class="year-labels" id="yearLabelsRow"></div>
+          <div class="year-grid-outer">
+            <div class="year-weekday-labels"><div></div><div>一</div><div></div><div>三</div><div></div><div>五</div><div></div></div>
+            <div class="year-grid" id="yearGrid"></div>
+          </div>
+        </div>
+      </div>
+
       <div class="cal-legend">
         <span>念得少</span>
         <span class="sw" style="background:var(--violet-100);"></span>
@@ -518,7 +558,11 @@ async function selectDate(dateStr){
   const existing = await loadRecord(dateStr);
   currentRecord = existing ? mergeWithCategories(existing) : emptyRecordFor();
   renderRecordPanel();
-  renderCalendar();
+  refreshCalendarView();
+}
+
+function refreshCalendarView(){
+  if(viewMode === 'year') renderYearView(); else renderCalendar();
 }
 
 function mergeWithCategories(rec){
@@ -581,7 +625,7 @@ function renderRecordPanel(){
       delete currentRecord.checks[key];
       await saveSettings();
       renderRecordPanel();
-      renderCalendar();
+      refreshCalendarView();
     });
   });
 
@@ -593,7 +637,7 @@ async function handleSave(){
   await saveRecord(selectedDate, currentRecord);
   document.getElementById('saveStatus').textContent = '已儲存';
   setTimeout(()=>{ document.getElementById('saveStatus').textContent=''; }, 2000);
-  renderCalendar();
+  refreshCalendarView();
 }
 document.getElementById('saveBtn').addEventListener('click', handleSave);
 
@@ -726,7 +770,7 @@ document.getElementById('btnPause').addEventListener('click', async () => {
   document.getElementById('timerSub').textContent = '已暫停，時間已儲存';
   document.getElementById('timerDisplay').textContent = fmtSeconds(currentRecord.seconds);
   updateTodayTotalDisplay();
-  renderCalendar();
+  refreshCalendarView();
 });
 
 function renderJlpt(){
