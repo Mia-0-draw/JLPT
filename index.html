@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>硯 — 日文學習記錄</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@500;700&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --ink:#17151b;
+    --ink-2:#242029;
+    --paper:#f7f5f9;
+    --paper-2:#efedf4;
+    --card:#ffffff;
+    --line:#e1dee8;
+    --line-strong:#cfc9dd;
+    --gray:#8d8894;
+    --gray-dark:#5c5865;
+    --violet-50:#f2edfb;
+    --violet-100:#e2d8f5;
+    --violet-200:#cdbdea;
+    --violet-300:#b09cdd;
+    --violet-400:#9c7fd1;
+    --violet-500:#7f5ec2;
+    --violet-600:#6f4fb0;
+    --violet-800:#4a3378;
+    --violet-900:#2f2050;
+    --danger:#a4443f;
+    --shadow:0 1px 2px rgba(23,21,27,0.05), 0 4px 16px rgba(23,21,27,0.06);
+    --radius:14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Noto Sans TC','PingFang TC','Microsoft JhengHei',sans-serif;
+    min-height:100vh;
+  }
+  ::selection{background:var(--violet-200);}
+  h1,h2,h3{font-family:'Shippori Mincho',serif; margin:0; letter-spacing:.02em;}
+  input,textarea,select,button{font-family:inherit; color:inherit;}
+  input,textarea,select{
+    background:var(--paper-2);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:8px 10px;
+    font-size:14px;
+    outline:none;
+    transition:border-color .15s;
+    width:100%;
+  }
+  input:focus,textarea:focus,select:focus{border-color:var(--violet-400);}
+  textarea{resize:vertical; font-family:inherit; line-height:1.6;}
+  button{cursor:pointer; border:none; border-radius:8px; font-size:14px; transition:transform .1s, background .15s, opacity .15s;}
+  button:active{transform:scale(.97);}
+  button:disabled{opacity:.5; cursor:default;}
+  .btn-primary{background:var(--ink); color:var(--paper); padding:10px 18px; font-weight:500;}
+  .btn-primary:hover{background:var(--ink-2);}
+  .btn-ghost{background:transparent; border:1px solid var(--line-strong); padding:9px 16px; color:var(--gray-dark);}
+  .btn-ghost:hover{border-color:var(--violet-400); color:var(--violet-800);}
+  .btn-icon{background:transparent; border:1px solid var(--line); width:34px; height:34px; display:flex; align-items:center; justify-content:center; color:var(--gray-dark); font-size:16px; border-radius:8px; flex-shrink:0;}
+  .btn-icon:hover{border-color:var(--violet-400); color:var(--violet-700);}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px 22px;}
+  .label{font-size:12px; color:var(--gray); letter-spacing:.06em; text-transform:uppercase; font-weight:500;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+  .err-text{font-size:13px; color:var(--danger); margin-top:8px; min-height:16px;}
+
+  /* ---------- Auth screen ---------- */
+  #authScreen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+  .auth-card{width:100%; max-width:360px;}
+  .auth-card h1{font-size:26px; text-align:center; margin-bottom:4px;}
+  .auth-card .sub{text-align:center; font-size:12px; color:var(--gray); letter-spacing:.1em; margin-bottom:24px;}
+  .auth-field{margin-bottom:12px;}
+  .auth-field label{font-size:13px; color:var(--gray-dark); display:block; margin-bottom:5px;}
+  .auth-toggle{text-align:center; margin-top:16px; font-size:13px; color:var(--gray);}
+  .auth-toggle button{background:none; border:none; color:var(--violet-700); font-weight:500; padding:0; text-decoration:underline;}
+  #appRoot{display:none;}
+
+  header.top{
+    background:var(--ink);
+    color:var(--paper);
+    padding:22px 32px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  }
+  header.top .brand{display:flex; align-items:baseline; gap:12px;}
+  header.top .brand h1{font-size:24px; color:var(--paper); font-weight:700;}
+  header.top .brand span{font-size:12px; color:var(--violet-300); letter-spacing:.15em;}
+  .head-right{display:flex; align-items:center; gap:14px;}
+  .jlpt-pill{
+    background:var(--ink-2); border:1px solid #3a3542; border-radius:10px;
+    padding:10px 18px; display:flex; align-items:center; gap:14px;
+  }
+  .jlpt-pill .num{font-family:'JetBrains Mono',monospace; font-size:26px; font-weight:700; color:var(--violet-200); line-height:1;}
+  .jlpt-pill .txt{font-size:12px; color:#a9a4b4; line-height:1.5;}
+  .jlpt-pill .txt b{color:var(--paper); font-weight:500;}
+  .jlpt-edit-btn{background:transparent; border:1px solid #46404f; color:#a9a4b4; width:28px; height:28px; border-radius:6px; font-size:13px;}
+  .jlpt-edit-btn:hover{border-color:var(--violet-400); color:var(--violet-200);}
+  .user-pill{display:flex; align-items:center; gap:10px; font-size:12px; color:#a9a4b4;}
+  .user-pill button{background:transparent; border:1px solid #46404f; color:#a9a4b4; padding:7px 12px; font-size:12px;}
+  .user-pill button:hover{border-color:var(--violet-400); color:var(--violet-200);}
+
+  .sync-note{font-size:11px; color:var(--gray); text-align:center; padding:6px 0 0;}
+
+  .layout{
+    max-width:1400px; margin:0 auto; padding:28px 32px 60px;
+    display:grid; grid-template-columns:380px 1fr; gap:24px; align-items:start;
+  }
+  .col{display:flex; flex-direction:column; gap:20px;}
+
+  .timer-card .timer-display{
+    font-family:'JetBrains Mono',monospace; font-size:44px; font-weight:700; text-align:center;
+    padding:18px 0 10px; letter-spacing:.02em; color:var(--ink);
+  }
+  .timer-card .timer-sub{text-align:center; font-size:12px; color:var(--gray); margin-bottom:16px;}
+  .timer-btns{display:flex; gap:10px;}
+  .timer-btns button{flex:1; padding:12px 0; font-weight:500; font-size:14px;}
+  .btn-start{background:var(--violet-600); color:#fff;}
+  .btn-start:hover{background:#623f9a;}
+  .btn-pause{background:var(--paper-2); color:var(--ink); border:1px solid var(--line-strong);}
+  .today-total{
+    margin-top:14px; padding-top:14px; border-top:1px solid var(--line);
+    display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--gray-dark);
+  }
+  .today-total b{font-family:'JetBrains Mono',monospace; color:var(--violet-800); font-size:15px;}
+
+  .record-card .rec-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;}
+  .rec-head .date-badge{font-size:15px; font-weight:500;}
+  .rec-head .today-tag{font-size:11px; background:var(--violet-50); color:var(--violet-800); padding:2px 8px; border-radius:20px; margin-left:8px; font-weight:500;}
+  .rec-sub{font-size:12px; color:var(--gray); margin-bottom:16px;}
+
+  .cat-row{
+    display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--line);
+  }
+  .cat-row:last-of-type{border-bottom:none;}
+  .cat-check{
+    width:20px; height:20px; border-radius:6px; border:1.5px solid var(--line-strong);
+    background:var(--paper-2); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; font-size:12px; color:transparent;
+  }
+  .cat-check.on{background:var(--violet-600); border-color:var(--violet-600); color:#fff;}
+  .cat-name{font-size:14px; flex:1; min-width:0;}
+  .cat-count-wrap{display:flex; align-items:center; gap:6px;}
+  .cat-count-wrap input{width:56px; text-align:right; padding:6px 8px; font-family:'JetBrains Mono',monospace;}
+  .cat-unit{font-size:12px; color:var(--gray); width:24px;}
+  .cat-del{background:transparent; border:none; color:var(--line-strong); font-size:14px; width:20px; flex-shrink:0;}
+  .cat-del:hover{color:var(--danger);}
+
+  .add-cat-row{display:flex; gap:8px; margin-top:12px;}
+  .add-cat-row input{flex:1;}
+
+  .note-area{margin-top:16px;}
+  .note-area textarea{min-height:90px;}
+
+  .save-row{margin-top:16px; display:flex; align-items:center; gap:10px;}
+  .save-status{font-size:12px; color:var(--gray);}
+
+  .cal-card .cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:18px;}
+  .cal-head h2{font-size:19px;}
+  .cal-nav{display:flex; gap:8px; align-items:center;}
+  .cal-nav .month-label{font-size:14px; font-weight:500; min-width:96px; text-align:center; font-family:'JetBrains Mono',monospace;}
+
+  .weekdays{display:grid; grid-template-columns:repeat(7,1fr); margin-bottom:6px;}
+  .weekdays div{text-align:center; font-size:11px; color:var(--gray); letter-spacing:.05em; padding-bottom:4px;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:6px;}
+  .cal-cell{
+    position:relative; aspect-ratio:1/1; border-radius:10px; border:1px solid var(--line);
+    background:var(--paper-2); padding:6px 7px; cursor:pointer; display:flex; flex-direction:column;
+    transition:border-color .12s, transform .1s;
+    min-height:64px;
+  }
+  .cal-cell:hover{border-color:var(--violet-400); transform:translateY(-1px);}
+  .cal-cell.empty{background:transparent; border:none; cursor:default;}
+  .cal-cell.empty:hover{transform:none;}
+  .cal-cell.selected{border-color:var(--violet-600); border-width:2px; padding:5px 6px;}
+  .cal-cell.today .day-num{color:var(--violet-700); font-weight:700;}
+  .day-num{font-size:12px; color:var(--gray-dark); font-family:'JetBrains Mono',monospace;}
+  .cat-chips{display:flex; flex-wrap:wrap; gap:3px; margin-top:auto;}
+  .cat-chip{
+    font-size:9px; padding:1px 4px; border-radius:4px; background:var(--violet-100); color:var(--violet-800);
+    line-height:1.5; font-weight:500;
+  }
+  .cal-legend{display:flex; align-items:center; gap:8px; margin-top:16px; font-size:11px; color:var(--gray);}
+  .cal-legend .sw{width:12px; height:12px; border-radius:3px;}
+
+  .resource-card .res-add{display:grid; grid-template-columns:1fr 1fr auto; gap:8px; margin-bottom:14px;}
+  .res-list{display:flex; flex-direction:column; gap:8px; max-height:280px; overflow-y:auto;}
+  .res-item{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--line);
+    border-radius:10px; background:var(--paper-2);
+  }
+  .res-icon{width:28px; height:28px; border-radius:7px; background:var(--violet-100); color:var(--violet-800); display:flex; align-items:center; justify-content:center; font-size:13px; flex-shrink:0; font-weight:700; font-family:'JetBrains Mono',monospace;}
+  .res-body{flex:1; min-width:0;}
+  .res-title{font-size:13px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .res-url{font-size:11px; color:var(--gray); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .res-item a{color:inherit; text-decoration:none;}
+  .res-item a:hover .res-title{color:var(--violet-700);}
+  .res-empty{font-size:13px; color:var(--gray); text-align:center; padding:20px 0;}
+
+  .jlpt-modal-backdrop{
+    position:fixed; inset:0; background:rgba(23,21,27,.45); display:none;
+    align-items:center; justify-content:center; z-index:50;
+  }
+  .jlpt-modal-backdrop.show{display:flex;}
+  .jlpt-modal{background:var(--card); border-radius:16px; padding:24px 26px; width:280px; box-shadow:var(--shadow);}
+  .jlpt-modal h3{font-size:16px; margin-bottom:14px;}
+  .jlpt-modal-btns{display:flex; gap:8px; margin-top:16px;}
+  .jlpt-modal-btns button{flex:1;}
+
+  @media (max-width:900px){
+    .layout{grid-template-columns:1fr; padding:20px 16px 40px;}
+    header.top{padding:18px 20px;}
+    .timer-display{font-size:36px !important;}
+  }
+</style>
+</head>
+<body>
+
+<div id="authScreen">
+  <div class="card auth-card">
+    <h1 id="authTitle">硯</h1>
+    <div class="sub">登入以同步你的日文學習記錄</div>
+    <div class="auth-field">
+      <label>電子郵件</label>
+      <input type="email" id="authEmail" placeholder="you@example.com" autocomplete="email">
+    </div>
+    <div class="auth-field">
+      <label>密碼</label>
+      <input type="password" id="authPassword" placeholder="至少 6 個字元" autocomplete="current-password">
+    </div>
+    <div class="err-text" id="authError"></div>
+    <button class="btn-primary" id="authSubmitBtn" style="width:100%;">登入</button>
+    <div class="auth-toggle">
+      <span id="authToggleLabel">還沒有帳號？</span>
+      <button id="authToggleBtn">註冊新帳號</button>
+    </div>
+  </div>
+</div>
+
+<div id="appRoot">
+<header class="top">
+  <div class="brand">
+    <h1>硯</h1>
+    <span>日文學習記錄</span>
+  </div>
+  <div class="head-right">
+    <div class="jlpt-pill" id="jlptPill">
+      <div>
+        <div class="num" id="jlptDays">—</div>
+        <div class="txt">距離 <b id="jlptDateLabel">尚未設定</b></div>
+      </div>
+      <button class="jlpt-edit-btn" id="jlptEditBtn" aria-label="設定考試日期" title="設定考試日期">✎</button>
+    </div>
+    <div class="user-pill">
+      <span id="userEmailLabel"></span>
+      <button id="logoutBtn">登出</button>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <div class="col">
+    <div class="card timer-card">
+      <div class="label">計時 · 今天</div>
+      <div class="timer-display mono" id="timerDisplay">00:00:00</div>
+      <div class="timer-sub" id="timerSub">尚未開始</div>
+      <div class="timer-btns">
+        <button class="btn-start" id="btnStart">開始念</button>
+        <button class="btn-pause" id="btnPause" disabled>暫停</button>
+      </div>
+      <div class="today-total">
+        <span>今日累積時間</span>
+        <b id="todayTotalTime">0 分鐘</b>
+      </div>
+    </div>
+
+    <div class="card record-card">
+      <div class="rec-head">
+        <div class="date-badge" id="recDateLabel">—<span class="today-tag" id="todayTag" style="display:none;">今天</span></div>
+      </div>
+      <div class="rec-sub" id="recSub">點選右側行事曆可切換編輯日期</div>
+
+      <div id="catList"></div>
+
+      <div class="add-cat-row">
+        <input type="text" id="newCatName" placeholder="新增項目，例如：聽力">
+        <button class="btn-icon" id="addCatBtn" aria-label="新增項目">＋</button>
+      </div>
+
+      <div class="note-area">
+        <div class="label" style="margin-bottom:6px;">筆記</div>
+        <textarea id="noteText" placeholder="今天念了什麼、遇到什麼問題、心得都可以寫在這裡..."></textarea>
+      </div>
+
+      <div class="save-row">
+        <button class="btn-primary" id="saveBtn">儲存紀錄</button>
+        <span class="save-status" id="saveStatus"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col">
+    <div class="card cal-card">
+      <div class="cal-head">
+        <h2>行事曆</h2>
+        <div class="cal-nav">
+          <button class="btn-icon" id="prevMonth" aria-label="上個月">‹</button>
+          <span class="month-label" id="monthLabel">—</span>
+          <button class="btn-icon" id="nextMonth" aria-label="下個月">›</button>
+          <button class="btn-ghost" id="todayBtn" style="margin-left:6px;">今天</button>
+        </div>
+      </div>
+      <div class="weekdays"><div>日</div><div>一</div><div>二</div><div>三</div><div>四</div><div>五</div><div>六</div></div>
+      <div class="cal-grid" id="calGrid"></div>
+      <div class="cal-legend">
+        <span>念得少</span>
+        <span class="sw" style="background:var(--violet-100);"></span>
+        <span class="sw" style="background:var(--violet-300);"></span>
+        <span class="sw" style="background:var(--violet-500);"></span>
+        <span class="sw" style="background:var(--violet-800);"></span>
+        <span>念得多</span>
+      </div>
+    </div>
+
+    <div class="card resource-card">
+      <div class="label" style="margin-bottom:12px;">好用網站 / PDF 資料庫</div>
+      <div class="res-add">
+        <input type="text" id="resTitle" placeholder="名稱，例如：JLPT N2 文法表">
+        <input type="text" id="resUrl" placeholder="網址 (https://...)">
+        <button class="btn-icon" id="resAddBtn" aria-label="新增資料">＋</button>
+      </div>
+      <div class="res-list" id="resList"></div>
+    </div>
+    <div class="sync-note" id="syncNote"></div>
+  </div>
+</div>
+</div>
+
+<div class="jlpt-modal-backdrop" id="jlptBackdrop">
+  <div class="jlpt-modal">
+    <h3>設定 JLPT 考試日期</h3>
+    <input type="date" id="jlptDateInput">
+    <div class="jlpt-modal-btns">
+      <button class="btn-ghost" id="jlptCancel">取消</button>
+      <button class="btn-primary" id="jlptSave">儲存</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAEyTSe77HJppaG4oOKDzrTHM1ISHECBNY",
+  authDomain: "jlptrec.firebaseapp.com",
+  projectId: "jlptrec",
+  storageBucket: "jlptrec.firebasestorage.app",
+  messagingSenderId: "212397349",
+  appId: "1:212397349:web:5c8bef710dbedcdcf37ecc"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+const DEFAULT_CATEGORIES = [
+  {key:'單字', unit:'字'},
+  {key:'文法', unit:'項'},
+  {key:'題本', unit:'題'},
+  {key:'新聞', unit:'篇'}
+];
+
+let currentUser = null;
+let isRegisterMode = false;
+
+let settings = { jlptDate: null, categories: DEFAULT_CATEGORIES.slice() };
+let recordsCache = {};
+let currentDate = new Date();
+let calYear = currentDate.getFullYear();
+let calMonth = currentDate.getMonth();
+let selectedDate = fmtDate(currentDate);
+let currentRecord = { checks:{}, note:'', seconds:0 };
+
+let timerRunning = false;
+let timerStartTs = null;
+let timerBaseSeconds = 0;
+let timerInterval = null;
+
+function fmtDate(d){
+  const y=d.getFullYear(), m=String(d.getMonth()+1).padStart(2,'0'), day=String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function todayStr(){ return fmtDate(new Date()); }
+function fmtSeconds(s){
+  s = Math.max(0, Math.round(s));
+  const h=String(Math.floor(s/3600)).padStart(2,'0');
+  const m=String(Math.floor((s%3600)/60)).padStart(2,'0');
+  const sec=String(s%60).padStart(2,'0');
+  return `${h}:${m}:${sec}`;
+}
+
+/* ---------- Auth ---------- */
+const authEmail = document.getElementById('authEmail');
+const authPassword = document.getElementById('authPassword');
+const authError = document.getElementById('authError');
+const authTitle = document.getElementById('authTitle');
+const authSubmitBtn = document.getElementById('authSubmitBtn');
+const authToggleLabel = document.getElementById('authToggleLabel');
+const authToggleBtn = document.getElementById('authToggleBtn');
+
+authToggleBtn.addEventListener('click', () => {
+  isRegisterMode = !isRegisterMode;
+  authSubmitBtn.textContent = isRegisterMode ? '註冊' : '登入';
+  authToggleLabel.textContent = isRegisterMode ? '已經有帳號？' : '還沒有帳號？';
+  authToggleBtn.textContent = isRegisterMode ? '直接登入' : '註冊新帳號';
+  authError.textContent = '';
+});
+
+authSubmitBtn.addEventListener('click', async () => {
+  const email = authEmail.value.trim();
+  const pw = authPassword.value;
+  authError.textContent = '';
+  if(!email || !pw){ authError.textContent = '請輸入電子郵件與密碼'; return; }
+  authSubmitBtn.disabled = true;
+  try{
+    if(isRegisterMode){
+      await auth.createUserWithEmailAndPassword(email, pw);
+    }else{
+      await auth.signInWithEmailAndPassword(email, pw);
+    }
+  }catch(e){
+    authError.textContent = translateAuthError(e.code);
+  }finally{
+    authSubmitBtn.disabled = false;
+  }
+});
+
+function translateAuthError(code){
+  const map = {
+    'auth/invalid-email':'電子郵件格式不正確',
+    'auth/user-not-found':'找不到這個帳號，要不要先註冊？',
+    'auth/wrong-password':'密碼不正確',
+    'auth/email-already-in-use':'這個信箱已經註冊過了，直接登入就好',
+    'auth/weak-password':'密碼太短，至少需要 6 個字元',
+    'auth/invalid-credential':'帳號或密碼不正確'
+  };
+  return map[code] || '發生錯誤，請再試一次';
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => auth.signOut());
+
+auth.onAuthStateChanged(async (user) => {
+  if(user){
+    currentUser = user;
+    document.getElementById('authScreen').style.display = 'none';
+    document.getElementById('appRoot').style.display = 'block';
+    document.getElementById('userEmailLabel').textContent = user.email;
+    document.getElementById('syncNote').textContent = '資料已同步至雲端帳號 ' + user.email;
+    await initApp();
+  }else{
+    currentUser = null;
+    document.getElementById('authScreen').style.display = 'flex';
+    document.getElementById('appRoot').style.display = 'none';
+    recordsCache = {};
+  }
+});
+
+/* ---------- Firestore helpers ---------- */
+function userDoc(){ return db.collection('users').doc(currentUser.uid); }
+function recordDoc(dateStr){ return userDoc().collection('records').doc(dateStr); }
+function resourcesCol(){ return userDoc().collection('resources'); }
+
+async function loadSettings(){
+  try{
+    const snap = await userDoc().get();
+    if(snap.exists){
+      const d = snap.data();
+      settings.jlptDate = d.jlptDate || null;
+      settings.categories = (d.categories && d.categories.length) ? d.categories : DEFAULT_CATEGORIES.slice();
+    }else{
+      settings = { jlptDate: null, categories: DEFAULT_CATEGORIES.slice() };
+    }
+  }catch(e){ console.error('loadSettings failed', e); }
+  renderJlpt();
+}
+async function saveSettings(){
+  try{
+    await userDoc().set({ jlptDate: settings.jlptDate, categories: settings.categories }, {merge:true});
+  }catch(e){ console.error('saveSettings failed', e); }
+}
+
+async function loadRecord(dateStr){
+  if(recordsCache[dateStr] !== undefined) return recordsCache[dateStr];
+  try{
+    const snap = await recordDoc(dateStr).get();
+    const r = snap.exists ? snap.data() : null;
+    recordsCache[dateStr] = r;
+    return r;
+  }catch(e){ console.error('loadRecord failed', e); return null; }
+}
+async function saveRecord(dateStr, record){
+  try{
+    await recordDoc(dateStr).set(record);
+    recordsCache[dateStr] = record;
+  }catch(e){ console.error('saveRecord failed', e); }
+}
+
+function emptyRecordFor(){
+  const checks = {};
+  settings.categories.forEach(c => checks[c.key] = {checked:false, count:0});
+  return { checks, note:'', seconds:0 };
+}
+
+async function selectDate(dateStr){
+  selectedDate = dateStr;
+  const existing = await loadRecord(dateStr);
+  currentRecord = existing ? mergeWithCategories(existing) : emptyRecordFor();
+  renderRecordPanel();
+  renderCalendar();
+}
+
+function mergeWithCategories(rec){
+  const checks = {};
+  settings.categories.forEach(c => {
+    checks[c.key] = rec.checks && rec.checks[c.key] ? rec.checks[c.key] : {checked:false, count:0};
+  });
+  return { checks, note: rec.note || '', seconds: rec.seconds || 0 };
+}
+
+function renderRecordPanel(){
+  const d = new Date(selectedDate+'T00:00:00');
+  const label = `${d.getMonth()+1}/${d.getDate()} (${'日一二三四五六'[d.getDay()]})`;
+  document.getElementById('recDateLabel').firstChild.textContent = label;
+  const isToday = selectedDate === todayStr();
+  document.getElementById('todayTag').style.display = isToday ? 'inline-block' : 'none';
+  document.getElementById('recSub').textContent = isToday ? '正在記錄今天的學習內容' : '點選右側行事曆可切換編輯日期，或按「今天」返回';
+
+  const list = document.getElementById('catList');
+  list.innerHTML = '';
+  settings.categories.forEach(cat => {
+    const state = currentRecord.checks[cat.key] || {checked:false, count:0};
+    const row = document.createElement('div');
+    row.className = 'cat-row';
+    row.innerHTML = `
+      <div class="cat-check ${state.checked?'on':''}" data-key="${cat.key}">✓</div>
+      <div class="cat-name">${cat.key}</div>
+      <div class="cat-count-wrap">
+        <input type="number" min="0" class="cat-count-input" data-key="${cat.key}" value="${state.count||0}">
+        <span class="cat-unit">${cat.unit||'項'}</span>
+      </div>
+      <button class="cat-del" data-key="${cat.key}" title="刪除此項目" aria-label="刪除">×</button>
+    `;
+    list.appendChild(row);
+  });
+
+  document.getElementById('noteText').value = currentRecord.note || '';
+  document.getElementById('saveStatus').textContent = '';
+
+  list.querySelectorAll('.cat-check').forEach(el => {
+    el.addEventListener('click', () => {
+      const key = el.dataset.key;
+      currentRecord.checks[key].checked = !currentRecord.checks[key].checked;
+      el.classList.toggle('on', currentRecord.checks[key].checked);
+    });
+  });
+  list.querySelectorAll('.cat-count-input').forEach(el => {
+    el.addEventListener('input', () => {
+      const key = el.dataset.key;
+      const val = Math.max(0, parseInt(el.value)||0);
+      currentRecord.checks[key].count = val;
+      if(val > 0) currentRecord.checks[key].checked = true;
+    });
+  });
+  list.querySelectorAll('.cat-del').forEach(el => {
+    el.addEventListener('click', async () => {
+      const key = el.dataset.key;
+      if(!confirm(`確定要刪除「${key}」這個項目嗎？（過去的紀錄不會被刪除）`)) return;
+      settings.categories = settings.categories.filter(c => c.key !== key);
+      delete currentRecord.checks[key];
+      await saveSettings();
+      renderRecordPanel();
+      renderCalendar();
+    });
+  });
+
+  updateTodayTotalDisplay();
+}
+
+async function handleSave(){
+  currentRecord.note = document.getElementById('noteText').value;
+  await saveRecord(selectedDate, currentRecord);
+  document.getElementById('saveStatus').textContent = '已儲存';
+  setTimeout(()=>{ document.getElementById('saveStatus').textContent=''; }, 2000);
+  renderCalendar();
+}
+document.getElementById('saveBtn').addEventListener('click', handleSave);
+
+document.getElementById('addCatBtn').addEventListener('click', async () => {
+  const input = document.getElementById('newCatName');
+  const name = input.value.trim();
+  if(!name) return;
+  if(settings.categories.some(c => c.key === name)){ input.value=''; return; }
+  settings.categories.push({key:name, unit:'項'});
+  currentRecord.checks[name] = {checked:false, count:0};
+  input.value = '';
+  await saveSettings();
+  renderRecordPanel();
+});
+document.getElementById('newCatName').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ document.getElementById('addCatBtn').click(); }
+});
+
+function intensityLevel(rec){
+  if(!rec) return 0;
+  let score = 0;
+  Object.values(rec.checks||{}).forEach(v => { if(v.checked) score += 1; score += (v.count||0)*0.15; });
+  score += (rec.seconds||0)/3600;
+  if(score <= 0) return 0;
+  if(score < 1.5) return 1;
+  if(score < 4) return 2;
+  if(score < 8) return 3;
+  return 4;
+}
+const LEVEL_COLORS = ['transparent','var(--violet-100)','var(--violet-300)','var(--violet-500)','var(--violet-800)'];
+
+async function renderCalendar(){
+  document.getElementById('monthLabel').textContent = `${calYear} 年 ${calMonth+1} 月`;
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  const firstDay = new Date(calYear, calMonth, 1);
+  const startWeekday = firstDay.getDay();
+  const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+
+  for(let i=0;i<startWeekday;i++){
+    const empty = document.createElement('div');
+    empty.className = 'cal-cell empty';
+    grid.appendChild(empty);
+  }
+
+  const dateStrs = [];
+  for(let day=1; day<=daysInMonth; day++){
+    dateStrs.push(fmtDate(new Date(calYear, calMonth, day)));
+  }
+  const recs = await Promise.all(dateStrs.map(ds => loadRecord(ds)));
+
+  dateStrs.forEach((ds, idx) => {
+    const rec = recs[idx];
+    const day = idx+1;
+    const cell = document.createElement('div');
+    cell.className = 'cal-cell';
+    if(ds === todayStr()) cell.classList.add('today');
+    if(ds === selectedDate) cell.classList.add('selected');
+
+    const level = intensityLevel(rec);
+    if(level > 0){
+      cell.style.background = LEVEL_COLORS[level];
+    }
+
+    let chipsHtml = '';
+    if(rec && rec.checks){
+      const done = Object.entries(rec.checks).filter(([k,v]) => v.checked || (v.count||0)>0).map(([k])=>k);
+      chipsHtml = '<div class="cat-chips">' + done.slice(0,3).map(k => `<span class="cat-chip">${k[0]}</span>`).join('') + '</div>';
+    }
+
+    cell.innerHTML = `<div class="day-num">${day}</div>${chipsHtml}`;
+    cell.addEventListener('click', () => selectDate(ds));
+    grid.appendChild(cell);
+  });
+}
+
+document.getElementById('prevMonth').addEventListener('click', () => {
+  calMonth--; if(calMonth<0){calMonth=11; calYear--;}
+  renderCalendar();
+});
+document.getElementById('nextMonth').addEventListener('click', () => {
+  calMonth++; if(calMonth>11){calMonth=0; calYear++;}
+  renderCalendar();
+});
+document.getElementById('todayBtn').addEventListener('click', () => {
+  const t = new Date();
+  calYear = t.getFullYear(); calMonth = t.getMonth();
+  selectDate(todayStr());
+});
+
+function updateTodayTotalDisplay(){
+  const isToday = selectedDate === todayStr();
+  const seconds = isToday ? currentRecord.seconds : 0;
+  const mins = Math.round(seconds/60);
+  document.getElementById('todayTotalTime').textContent = `${mins} 分鐘`;
+}
+
+function tick(){
+  const elapsed = timerBaseSeconds + (Date.now() - timerStartTs)/1000;
+  document.getElementById('timerDisplay').textContent = fmtSeconds(elapsed);
+}
+
+async function ensureTodaySelectedForTimer(){
+  if(selectedDate !== todayStr()){
+    await selectDate(todayStr());
+  }
+}
+
+document.getElementById('btnStart').addEventListener('click', async () => {
+  await ensureTodaySelectedForTimer();
+  timerRunning = true;
+  timerStartTs = Date.now();
+  timerBaseSeconds = currentRecord.seconds || 0;
+  document.getElementById('btnStart').disabled = true;
+  document.getElementById('btnPause').disabled = false;
+  document.getElementById('timerSub').textContent = '計時中...';
+  timerInterval = setInterval(tick, 1000);
+  tick();
+});
+
+document.getElementById('btnPause').addEventListener('click', async () => {
+  if(!timerRunning) return;
+  timerRunning = false;
+  clearInterval(timerInterval);
+  const elapsed = timerBaseSeconds + (Date.now() - timerStartTs)/1000;
+  currentRecord.seconds = Math.round(elapsed);
+  await saveRecord(selectedDate, currentRecord);
+  document.getElementById('btnStart').disabled = false;
+  document.getElementById('btnPause').disabled = true;
+  document.getElementById('timerSub').textContent = '已暫停，時間已儲存';
+  document.getElementById('timerDisplay').textContent = fmtSeconds(currentRecord.seconds);
+  updateTodayTotalDisplay();
+  renderCalendar();
+});
+
+function renderJlpt(){
+  const pill = document.getElementById('jlptDays');
+  const label = document.getElementById('jlptDateLabel');
+  if(!settings.jlptDate){
+    pill.textContent = '—';
+    label.textContent = '尚未設定考試日期';
+    return;
+  }
+  const today = new Date(); today.setHours(0,0,0,0);
+  const exam = new Date(settings.jlptDate+'T00:00:00');
+  const diff = Math.ceil((exam-today)/86400000);
+  pill.textContent = diff >= 0 ? diff : '0';
+  const d = exam;
+  label.textContent = `${d.getMonth()+1}/${d.getDate()} 考試` + (diff<0 ? '（已過）' : diff===0 ? '（今天！）' : `還有 ${diff} 天`);
+}
+
+document.getElementById('jlptEditBtn').addEventListener('click', () => {
+  document.getElementById('jlptDateInput').value = settings.jlptDate || '';
+  document.getElementById('jlptBackdrop').classList.add('show');
+});
+document.getElementById('jlptCancel').addEventListener('click', () => {
+  document.getElementById('jlptBackdrop').classList.remove('show');
+});
+document.getElementById('jlptSave').addEventListener('click', async () => {
+  const val = document.getElementById('jlptDateInput').value;
+  settings.jlptDate = val || null;
+  await saveSettings();
+  renderJlpt();
+  document.getElementById('jlptBackdrop').classList.remove('show');
+});
+
+function faviconLetter(url, type){
+  if(type === 'pdf') return 'PDF';
+  try{
+    const host = new URL(url).hostname.replace('www.','');
+    return host[0].toUpperCase();
+  }catch(e){ return '🔗'; }
+}
+
+async function renderResources(){
+  const el = document.getElementById('resList');
+  try{
+    const snap = await resourcesCol().orderBy('createdAt','desc').get();
+    el.innerHTML = '';
+    if(snap.empty){
+      el.innerHTML = '<div class="res-empty">還沒有加入任何學習資料</div>';
+      return;
+    }
+    snap.forEach(doc => {
+      const item = doc.data();
+      const isPdf = /\.pdf($|\?)/i.test(item.url);
+      const row = document.createElement('div');
+      row.className = 'res-item';
+      row.innerHTML = `
+        <div class="res-icon">${faviconLetter(item.url, isPdf?'pdf':'web')}</div>
+        <a href="${item.url}" target="_blank" rel="noopener" class="res-body">
+          <div class="res-title">${item.title}</div>
+          <div class="res-url">${item.url}</div>
+        </a>
+        <button class="cat-del" title="刪除" aria-label="刪除">×</button>
+      `;
+      row.querySelector('.cat-del').addEventListener('click', async () => {
+        await resourcesCol().doc(doc.id).delete();
+        renderResources();
+      });
+      el.appendChild(row);
+    });
+  }catch(e){ console.error('renderResources failed', e); }
+}
+
+document.getElementById('resAddBtn').addEventListener('click', async () => {
+  const title = document.getElementById('resTitle').value.trim();
+  const url = document.getElementById('resUrl').value.trim();
+  if(!title || !url) return;
+  const fullUrl = /^https?:\/\//i.test(url) ? url : 'https://'+url;
+  try{
+    await resourcesCol().add({title, url: fullUrl, createdAt: Date.now()});
+    document.getElementById('resTitle').value = '';
+    document.getElementById('resUrl').value = '';
+    renderResources();
+  }catch(e){ console.error('add resource failed', e); }
+});
+
+async function initApp(){
+  recordsCache = {};
+  await loadSettings();
+  await selectDate(todayStr());
+  await renderResources();
+}
+</script>
+</body>
+</html>
